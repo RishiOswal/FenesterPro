@@ -13,6 +13,7 @@
 </section>
 
 <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    {% if is_admin or project.status == 'accepted' or project.status == 'in_production' or project.status == 'completed' %}
     <a href="{% url 'reports:quotation' project.pk %}" class="bg-white border border-black/10 p-6 hover:bg-[#fcfaf6] transition-colors">
         <p class="text-xs uppercase tracking-[0.14em] font-bold text-brand-red">PDF</p>
         <h2 class="mt-2 text-2xl font-extrabold">Proforma Quotation</h2>
@@ -26,7 +27,14 @@
         <p class="mt-2 text-sm text-ui-muted">Grouped material totals for profiles, glass area, and fitting requirements.</p>
         <span class="inline-flex mt-5 text-sm font-bold text-brand-red">Open Report</span>
     </a>
+    {% else %}
+    <div class="col-span-1 md:col-span-2 bg-amber-50 border border-amber-200 p-6">
+        <h3 class="text-lg font-extrabold text-amber-800">Reports Unavailable</h3>
+        <p class="text-sm text-amber-700 mt-2">Reports will become available for download once the administrator has accepted your order.</p>
+    </div>
+    {% endif %}
 
+    {% if is_admin %}
     <a href="{% url 'reports:cutting' project.pk %}" class="bg-white border border-black/10 p-6 hover:bg-[#fcfaf6] transition-colors {% if not project.optimisation_result %}opacity-60 pointer-events-none{% endif %}">
         <p class="text-xs uppercase tracking-[0.14em] font-bold text-brand-red">PDF</p>
         <h2 class="mt-2 text-2xl font-extrabold">Workshop Cutting Plan</h2>
@@ -40,5 +48,6 @@
         <p class="mt-2 text-sm text-ui-muted">Multi-sheet workbook for project data sharing, checking, and audit records.</p>
         <span class="inline-flex mt-5 text-sm font-bold text-brand-red">Download</span>
     </a>
+    {% endif %}
 </section>
 {% endblock %}

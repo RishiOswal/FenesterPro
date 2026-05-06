@@ -1,0 +1,209 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Optimization Report - FenesterPro{% endblock %}
+
+{% block content %}
+<section class="max-w-5xl mx-auto mt-6">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-3xl font-extrabold tracking-tight">Optimization Results</h1>
+            <p class="text-ui-muted mt-1">Project {{ project.project_code }}</p>
+        </div>
+        <a href="{% url 'projects:detail' project.pk %}" class="inline-flex px-4 py-2 border border-black/20 text-sm font-bold hover:border-black/40 transition-colors">Back to Project</a>
+    </div>
+
+    <!-- Animation Container -->
+    <div id="animation-container" class="bg-white border border-black/10 p-6 shadow-sm mb-6">
+        <h2 class="text-xl font-bold mb-4" id="current-profile-name">Initializing Animation...</h2>
+        
+        <div class="space-y-6" id="bars-container">
+            <!-- Bars will be generated here by JS -->
+        </div>
+    </div>
+
+    <!-- Final Report Summary (Hidden until animation finishes) -->
+    <div id="report-summary" class="hidden grid grid-cols-1 md:grid-cols-3 gap-5 opacity-0 transition-opacity duration-700">
+        <div class="bg-white border border-black/10 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Total Bars Required</p>
+            <p class="mt-2 text-4xl font-extrabold text-brand-ink">{{ result.total_bars_used }}</p>
+            <p class="mt-1 text-sm text-emerald-600 font-bold">Saved {{ result.result_data.comparison.bars_saved }} bars!</p>
+        </div>
+        
+        <div class="bg-white border border-black/10 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Material Efficiency</p>
+            <p class="mt-2 text-4xl font-extrabold text-brand-ink">{{ result.overall_efficiency|floatformat:1 }}%</p>
+            <p class="mt-1 text-sm text-emerald-600 font-bold">Reduced waste by {{ result.result_data.comparison.waste_saved_mm|floatformat:0 }} mm</p>
+        </div>
+        
+        <div class="bg-white border border-black/10 p-5 shadow-sm flex flex-col justify-center items-start">
+            <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Next Step</p>
+            <a href="{% url 'reports:cutting' project.pk %}" class="mt-3 inline-flex px-5 py-2.5 bg-brand-red text-white text-sm font-bold hover:bg-[#b13227] transition-colors">
+                Download PDF Plan
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Safely inject JSON data -->
+{{ result_json|json_script:"result-data" }}
+
+<style>
+    .stock-bar {
+        width: 100%;
+        height: 40px;
+        background-color: #f1f5f9;
+        border: 2px solid #cbd5e1;
+        position: relative;
+        display: flex;
+        align-items: stretch;
+        gap: 2px;
+        padding: 2px;
+        overflow: hidden;
+    }
+    .cut-piece {
+        background-color: #d13b2f; /* brand red */
+        border: 1px solid #7f1d1d;
+        height: 100%;
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.6rem;
+        font-weight: bold;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .cut-piece.dropped {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Parse the JSON data securely
+        const dataNode = document.getElementById('result-data');
+        if (!dataNode) return;
+        const resultData = JSON.parse(dataNode.textContent);
+        
+        const container = document.getElementById('bars-container');
+        const titleEl = document.getElementById('current-profile-name');
+        const summaryEl = document.getElementById('report-summary');
+        
+        const profiles = Object.values(resultData.profiles);
+        let currentProfileIdx = 0;
+        let currentBarIdx = 0;
+        let currentPieceIdx = 0;
+        
+        // standard length is typically 6000, we need it to calculate % widths
+        // In real app, standard length might vary, we assume 6000 for relative widths or dynamically compute max.
+        let barLength = 6000; 
+
+        function animateNextPiece() {
+            if (currentProfileIdx >= profiles.length) {
+                // Animation Complete
+                titleEl.textContent = "Optimization Complete!";
+                titleEl.classList.add("text-emerald-700");
+                summaryEl.classList.remove('hidden');
+                
+                // Trigger reflow to apply opacity transition
+                void summaryEl.offsetWidth;
+                summaryEl.classList.remove('opacity-0');
+                summaryEl.classList.add('opacity-100');
+                return;
+            }
+
+            const profile = profiles[currentProfileIdx];
+            titleEl.textContent = `Packing Profile: ${profile.profile_name}`;
+            const bars = profile.bar_layouts;
+            
+            // If profile has no bars
+            if (!bars || bars.length === 0) {
+                currentProfileIdx++;
+                animateNextPiece();
+                return;
+            }
+
+            const currentBar = bars[currentBarIdx];
+            
+            // If we need to render the bar DOM element
+            let barEl = document.getElementById(`bar-${currentProfileIdx}-${currentBarIdx}`);
+            if (!barEl) {
+                // Calculate max bar length dynamically based on pieces + remaining
+                barLength = currentBar.used_length + currentBar.remaining;
+                if(barLength <= 0) barLength = 6000;
+
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `
+                    <div class="flex justify-between text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                        <span>Bar ${currentBarIdx + 1}</span>
+                        <span>Waste: ${currentBar.remaining.toFixed(0)}mm</span>
+                    </div>
+                    <div class="stock-bar" id="bar-${currentProfileIdx}-${currentBarIdx}"></div>
+                `;
+                container.appendChild(wrapper);
+                barEl = document.getElementById(`bar-${currentProfileIdx}-${currentBarIdx}`);
+                
+                // Smooth scroll to the new bar
+                barEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+
+            const pieces = currentBar.pieces;
+            if (currentPieceIdx < pieces.length) {
+                const piece = pieces[currentPieceIdx];
+                const pieceEl = document.createElement('div');
+                pieceEl.className = 'cut-piece';
+                
+                // Calculate width percentage relative to bar length
+                const pct = (piece.length / barLength) * 100;
+                pieceEl.style.width = `${pct}%`;
+                
+                // Only show text if piece is wide enough
+                if (pct > 5) {
+                    pieceEl.textContent = `${piece.length.toFixed(0)}`;
+                }
+                
+                barEl.appendChild(pieceEl);
+
+                // Animate
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        pieceEl.classList.add('dropped');
+                    });
+                });
+
+                currentPieceIdx++;
+                setTimeout(animateNextPiece, 150); // Fast drop
+            } else {
+                // Move to next bar
+                currentBarIdx++;
+                currentPieceIdx = 0;
+                
+                if (currentBarIdx >= bars.length) {
+                    // Move to next profile
+                    currentProfileIdx++;
+                    currentBarIdx = 0;
+                    
+                    // Clear container for next profile to keep UI clean, OR keep it
+                    // If there are too many bars, it's better to clear it, but keeping it is cool.
+                    // Let's add a visual separator instead.
+                    if (currentProfileIdx < profiles.length) {
+                        const sep = document.createElement('hr');
+                        sep.className = "my-6 border-black/10";
+                        container.appendChild(sep);
+                    }
+                    setTimeout(animateNextPiece, 500); // Pause before next profile
+                } else {
+                    setTimeout(animateNextPiece, 200);
+                }
+            }
+        }
+
+        // Start animation loop
+        setTimeout(animateNextPiece, 500);
+    });
+</script>
+{% endblock %}

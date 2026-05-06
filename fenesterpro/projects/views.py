@@ -137,6 +137,28 @@ def calculate_project(request, pk):
     return redirect('projects:detail', pk=pk)
 
 
+import json
+
+@login_required
+def optimisation_report(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    if not can_access_project(request.user, project):
+        return HttpResponseForbidden("You do not have permission to access this.")
+    if not is_admin_user(request.user):
+        return HttpResponseForbidden("Only admins can view the optimization report.")
+        
+    result = getattr(project, 'optimisation_result', None)
+    if not result:
+        messages.error(request, "No optimization result found. Please run optimization first.")
+        return redirect('projects:detail', pk=pk)
+        
+    return render(request, 'projects/optimisation_report.html', {
+        'project': project, 
+        'result_json': result.result_data,
+        'result': result
+    })
+
+
 @login_required
 def optimise_project(request, pk):
     if request.method == 'POST':
@@ -208,6 +230,8 @@ def optimise_project(request, pk):
             request,
             f"Bar optimisation complete. Saved {comp['bars_saved']} bars and {comp['waste_saved_mm']:.1f}mm waste vs strict profile-code packing."
         )
+        # Redirect to the report/animation page instead of detail
+        return redirect('projects:optimisation_report', pk=pk)
     return redirect('projects:detail', pk=pk)
 
 

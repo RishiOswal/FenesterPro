@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
 {% block title %}Project {{ project.project_code }} - FenesterPro{% endblock %}
 
@@ -90,6 +91,24 @@
             {% if window.has_mesh %}
             <span class="inline-flex mt-3 text-xs font-bold px-2.5 py-1 border border-black/10 bg-[#faf8f4]">Mesh Included</span>
             {% endif %}
+
+            <!-- Photorealistic Window Graphic -->
+            <div class="w-full h-48 mt-5 bg-[#f8f9fa] border border-black/5 flex items-center justify-center p-3 shadow-inner rounded-sm overflow-hidden">
+                <div class="relative h-full w-full flex items-center justify-center">
+                    {% if window.typology.category == 'sliding' %}
+                        <img src="{% static 'images/sliding_window.png' %}" class="object-cover shadow-md border border-black/20 rounded-sm" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;" alt="Sliding Window">
+                    {% elif window.typology.category == 'fixed' %}
+                        <img src="{% static 'images/fixed_window.png' %}" class="object-cover shadow-md border border-black/20 rounded-sm" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;" alt="Fixed Window">
+                    {% elif window.typology.category == 'casement' or window.typology.category == 'awning' %}
+                        <img src="{% static 'images/casement_window.png' %}" class="object-cover shadow-md border border-black/20 rounded-sm" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;" alt="Casement Window">
+                    {% elif window.typology.category == 'door' %}
+                        <img src="{% static 'images/aluminium_door.png' %}" class="object-cover shadow-md border border-black/20 rounded-sm" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;" alt="Door">
+                    {% else %}
+                        <div class="bg-gray-200 border border-gray-300 rounded-sm flex items-center justify-center text-xs text-gray-500 font-bold" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;">NO IMAGE</div>
+                    {% endif %}
+                </div>
+            </div>
+            
         </div>
         {% empty %}
         <div class="md:col-span-2 lg:col-span-3 border border-dashed border-black/20 p-10 text-center bg-white">
@@ -100,7 +119,7 @@
     </div>
 </section>
 
-{% if windows %}
+{% if windows and is_admin %}
 <section class="bg-white border border-black/10 p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
         <h3 class="text-lg font-extrabold">Run Batch Actions</h3>
@@ -111,12 +130,18 @@
             {% csrf_token %}
             <button type="submit" class="w-full sm:w-auto px-5 py-3 bg-brand-ink text-white text-sm font-bold hover:bg-black transition-colors">Calculate Models</button>
         </form>
-        <form action="{% url 'projects:optimise' project.pk %}" method="post">
+        {% if all_calculated %}
+        <form action="{% url 'projects:optimise' project.pk %}" method="post" class="w-full sm:w-auto">
             {% csrf_token %}
-            <button type="submit" class="w-full sm:w-auto px-5 py-3 bg-brand-red text-white text-sm font-bold hover:bg-[#b13227] transition-colors {% if not all_calculated %}opacity-50 cursor-not-allowed{% endif %}" {% if not all_calculated %}disabled{% endif %}>
+            <button type="submit" class="w-full px-5 py-3 bg-brand-red text-white text-sm font-bold text-center hover:bg-[#b13227] transition-colors inline-block">
                 Optimize Bars
             </button>
         </form>
+        {% else %}
+        <button type="button" class="w-full sm:w-auto px-5 py-3 bg-brand-red text-white text-sm font-bold opacity-50 cursor-not-allowed" disabled>
+            Optimize Bars
+        </button>
+        {% endif %}
     </div>
 </section>
 {% endif %}

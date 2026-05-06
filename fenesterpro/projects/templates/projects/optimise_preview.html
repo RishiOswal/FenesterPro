@@ -1,0 +1,100 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Running Optimizer - FenesterPro{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto mt-10 p-8 bg-white border border-black/10 shadow-xl flex flex-col items-center">
+    
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-extrabold tracking-tight">Optimizing Material Usage</h1>
+        <p class="text-ui-muted mt-2 max-w-lg mx-auto">Running First-Fit Decreasing algorithm to pack calculated cuts into standard stock bars...</p>
+    </div>
+
+    <!-- Animation Container -->
+    <div class="relative w-full h-64 bg-[#faf8f4] border border-black/10 rounded-sm overflow-hidden flex items-end p-4">
+        
+        <!-- The Raw Bar -->
+        <div class="w-full h-16 bg-gray-200 border-2 border-gray-400 relative flex items-center px-1 gap-1" id="stock-bar">
+            <!-- Cut pieces will be appended here by JS -->
+        </div>
+
+        <!-- Falling Pieces Container -->
+        <div id="falling-pieces" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+    </div>
+
+    <!-- Status Output -->
+    <div class="w-full mt-6 flex justify-between items-center text-sm font-bold text-ui-muted uppercase tracking-widest">
+        <span id="anim-status">Initializing...</span>
+        <span>FFD Algorithm</span>
+    </div>
+
+    <!-- Hidden Form for actual submission -->
+    <form id="optimise-form" action="{% url 'projects:optimise' project.pk %}" method="post" class="hidden">
+        {% csrf_token %}
+    </form>
+</section>
+
+<style>
+    .cut-piece {
+        height: 100%;
+        background-color: #d13b2f;
+        border: 2px solid #b13227;
+        opacity: 0;
+        transform: translateY(-100px);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    .cut-piece.dropped {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const bar = document.getElementById('stock-bar');
+        const status = document.getElementById('anim-status');
+        const form = document.getElementById('optimise-form');
+
+        // Simulate a few cut pieces
+        const pieces = [30, 20, 15, 10, 10, 5]; // percentages of the bar
+        let currentIdx = 0;
+
+        function dropNextPiece() {
+            if (currentIdx >= pieces.length) {
+                status.textContent = "Optimization Complete! Saving...";
+                status.classList.add("text-emerald-600");
+                
+                // Submit form after short delay
+                setTimeout(() => {
+                    form.submit();
+                }, 800);
+                return;
+            }
+
+            status.textContent = `Packing piece ${currentIdx + 1} of ${pieces.length}...`;
+            
+            const piece = document.createElement('div');
+            piece.className = 'cut-piece';
+            piece.style.width = pieces[currentIdx] + '%';
+            
+            bar.appendChild(piece);
+
+            // Trigger animation
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    piece.classList.add('dropped');
+                });
+            });
+
+            currentIdx++;
+            
+            // Random delay between 400ms and 800ms
+            const delay = Math.random() * 400 + 400;
+            setTimeout(dropNextPiece, delay);
+        }
+
+        // Start animation after 500ms
+        setTimeout(dropNextPiece, 500);
+    });
+</script>
+{% endblock %}
