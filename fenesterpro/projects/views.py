@@ -10,7 +10,7 @@ from calculator.engine import WindowCalculator
 from optimizer.engine import BarOptimiser
 from optimizer.models import OptimisationResult
 from .permissions import is_admin_user, can_access_project
-from reports.generators.quotation import calculate_quotation_totals
+from reports.generators.quotation import calculate_quotation_totals, calculate_material_cost
 
 
 @login_required
@@ -76,10 +76,27 @@ def project_detail(request, pk):
         'is_admin': is_admin,
         'invoice': getattr(project, 'invoice', None),
         'invoice_form': invoice_form,
+        'auto_pricing': auto_pricing,
         'auto_subtotal': auto_pricing['subtotal'],
         'auto_tax_preview': round(auto_pricing['subtotal'] * (invoice_tax_percent / 100), 2),
         'auto_total_preview': round(auto_pricing['subtotal'] + (auto_pricing['subtotal'] * (invoice_tax_percent / 100)), 2),
     }
+
+    if optimised:
+        cost_before, cost_after, savings = calculate_material_cost(project, project.optimisation_result.result_data)
+        context.update({
+            'cost_before': cost_before,
+            'cost_after': cost_after,
+            'savings': savings,
+            'retail_before': cost_before * 1.5,
+            'retail_after': cost_after * 1.5,
+            'retail_savings': savings * 1.5,
+            'bars_before': project.optimisation_result.result_data.get('comparison', {}).get('baseline_bars_used', 0),
+            'bars_after': project.optimisation_result.result_data.get('comparison', {}).get('optimized_bars_used', 0),
+            'waste_before': project.optimisation_result.result_data.get('comparison', {}).get('baseline_waste_mm', 0),
+            'waste_after': project.optimisation_result.result_data.get('comparison', {}).get('optimized_waste_mm', 0),
+        })
+
     return render(request, 'projects/project_detail.html', context)
 
 
@@ -171,6 +188,7 @@ def optimise_project(request, pk):
         # 2) grouped packing (interchangeable profiles) for actual optimization
         strict_cut_pieces = []
         grouped_cut_pieces = []
+        profile_costs = {}
 
         def _group_label(profile):
             if not profile.optimisation_group:
@@ -187,6 +205,7 @@ def optimise_project(request, pk):
                     'length': piece.length,
                     'qty': effective_qty,
                 })
+                profile_costs[piece.profile.code] = piece.profile.unit_cost
 
                 grouped_profile_code = (piece.profile.optimisation_group or piece.profile.code).strip()
                 grouped_cut_pieces.append({
@@ -196,23 +215,40 @@ def optimise_project(request, pk):
                     'length': piece.length,
                     'qty': effective_qty,
                 })
+                profile_costs[grouped_profile_code] = piece.profile.unit_cost
 
         if not grouped_cut_pieces:
             messages.warning(request, "No calculated cut pieces found for optimisation.")
             return redirect('projects:detail', pk=pk)
 
-        optimiser = BarOptimiser(bar_length=project.profile_system.standard_bar_length if project.profile_system else 6000)
+        bar_length = project.profile_system.standard_bar_length if project.profile_system else 6000
+        optimiser = BarOptimiser(bar_length=bar_length)
         baseline_data = optimiser.optimise(strict_cut_pieces)
         result_data = optimiser.optimise(grouped_cut_pieces)
+        
+        def _calc_cost(opt_data):
+            total_cost = 0.0
+            for code, data in opt_data.get('profiles', {}).items():
+                unit_cost = profile_costs.get(code, 0.0)
+                bars_used = data.get('bars_used', 0)
+                total_cost += bars_used * bar_length * unit_cost
+            return round(total_cost, 2)
+            
+        baseline_cost = _calc_cost(baseline_data)
+        optimized_cost = _calc_cost(result_data)
+
         result_data['comparison'] = {
             'baseline_bars_used': baseline_data.get('bars_used', 0),
             'baseline_waste_mm': baseline_data.get('waste_mm', 0.0),
             'baseline_waste_percent': baseline_data.get('waste_percent', 0.0),
+            'baseline_cost': baseline_cost,
             'optimized_bars_used': result_data.get('bars_used', 0),
             'optimized_waste_mm': result_data.get('waste_mm', 0.0),
             'optimized_waste_percent': result_data.get('waste_percent', 0.0),
+            'optimized_cost': optimized_cost,
             'bars_saved': baseline_data.get('bars_used', 0) - result_data.get('bars_used', 0),
             'waste_saved_mm': baseline_data.get('waste_mm', 0.0) - result_data.get('waste_mm', 0.0),
+            'cost_saved': round(baseline_cost - optimized_cost, 2),
         }
 
         # Save result

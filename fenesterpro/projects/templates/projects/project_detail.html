@@ -146,6 +146,66 @@
 </section>
 {% endif %}
 
+{% if optimised %}
+    {% if is_admin %}
+    <section class="bg-emerald-50 border border-emerald-200 p-5 md:p-6 mt-7">
+        <h3 class="text-xl font-extrabold text-emerald-800">Cost Optimization Summary</h3>
+        <p class="text-sm text-emerald-700 mt-1">Material savings achieved through bar cutting optimization.</p>
+        
+        <div class="mt-5 grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="bg-white border border-emerald-100 p-4">
+                <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Metric</p>
+                <p class="mt-2 font-bold text-sm">Bars Required</p>
+                <p class="mt-2 font-bold text-sm">Material Waste</p>
+                <p class="mt-2 font-bold text-sm border-t border-emerald-50 pt-2">Estimated Cost</p>
+            </div>
+            <div class="bg-white border border-emerald-100 p-4">
+                <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Before</p>
+                <p class="mt-2 text-sm">{{ bars_before }} bars</p>
+                <p class="mt-2 text-sm">{{ waste_before|floatformat:0 }} mm</p>
+                <p class="mt-2 font-bold text-sm border-t border-emerald-50 pt-2">INR {{ cost_before|floatformat:2 }}</p>
+            </div>
+            <div class="bg-white border border-emerald-100 p-4">
+                <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">After</p>
+                <p class="mt-2 text-sm">{{ bars_after }} bars</p>
+                <p class="mt-2 text-sm">{{ waste_after|floatformat:0 }} mm</p>
+                <p class="mt-2 font-bold text-sm border-t border-emerald-50 pt-2 text-emerald-700">INR {{ cost_after|floatformat:2 }}</p>
+            </div>
+            <div class="bg-white border border-emerald-100 p-4">
+                <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Retail Value</p>
+                <p class="mt-2 text-sm text-ui-muted">-</p>
+                <p class="mt-2 text-sm text-ui-muted">-</p>
+                <p class="mt-2 font-bold text-sm border-t border-emerald-50 pt-2 text-brand-ink">INR {{ retail_after|floatformat:2 }}</p>
+            </div>
+            <div class="bg-emerald-600 text-white p-4 flex flex-col justify-center items-center text-center">
+                <p class="text-xs uppercase tracking-[0.14em] font-bold text-emerald-200">You Save</p>
+                <p class="mt-1 text-2xl font-extrabold">INR {{ savings|floatformat:2 }}</p>
+            </div>
+        </div>
+    </section>
+    {% else %}
+    <section class="bg-emerald-50 border border-emerald-200 p-5 md:p-6 mt-7">
+        <h3 class="text-xl font-extrabold text-emerald-800">Value Optimization</h3>
+        <p class="text-sm text-emerald-700 mt-1">Special discount applied through our efficient manufacturing process.</p>
+        
+        <div class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white border border-emerald-100 p-5 flex flex-col justify-center">
+                <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Standard Value</p>
+                <p class="mt-2 text-2xl font-extrabold line-through text-ui-muted">INR {{ retail_before|floatformat:2 }}</p>
+            </div>
+            <div class="bg-white border border-emerald-100 p-5 flex flex-col justify-center border-l-4 border-l-emerald-500">
+                <p class="text-xs uppercase tracking-[0.14em] font-bold text-emerald-700">Your Quote Price</p>
+                <p class="mt-2 text-3xl font-extrabold text-emerald-700">INR {{ retail_after|floatformat:2 }}</p>
+            </div>
+            <div class="bg-emerald-600 text-white p-5 flex flex-col justify-center items-center text-center">
+                <p class="text-xs uppercase tracking-[0.14em] font-bold text-emerald-200">Discount Applied</p>
+                <p class="mt-1 text-3xl font-extrabold">INR {{ retail_savings|floatformat:2 }}</p>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+{% endif %}
+
 {% if is_admin %}
 <section class="bg-white border border-black/10 p-5 md:p-6 mt-7">
     <h3 class="text-xl font-extrabold">Billing</h3>
@@ -188,15 +248,15 @@
     <div class="grid md:grid-cols-2 gap-4 mt-4">
         <div class="border border-black/10 p-4 bg-[#faf8f4]">
             <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Subtotal</p>
-            <p class="mt-1 text-2xl font-extrabold">INR {{ invoice.subtotal|floatformat:2 }}</p>
+            <p class="mt-1 text-2xl font-extrabold">INR {{ auto_pricing.subtotal|floatformat:2 }}</p>
         </div>
         <div class="border border-black/10 p-4 bg-[#faf8f4]">
             <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Tax</p>
-            <p class="mt-1 text-2xl font-extrabold">INR {{ invoice.tax_amount|floatformat:2 }}</p>
+            <p class="mt-1 text-2xl font-extrabold">INR {{ auto_pricing.tax_amount|floatformat:2 }}</p>
         </div>
         <div class="border border-black/10 p-4 bg-[#faf8f4]">
             <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Total</p>
-            <p class="mt-1 text-2xl font-extrabold">INR {{ invoice.total|floatformat:2 }}</p>
+            <p class="mt-1 text-2xl font-extrabold">INR {{ auto_pricing.total|floatformat:2 }}</p>
         </div>
         <div class="border border-black/10 p-4 bg-[#faf8f4]">
             <p class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted">Payment</p>
