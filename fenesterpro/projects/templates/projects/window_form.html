@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
 {% block title %}Add Window - {{ project.project_code }}{% endblock %}
 
@@ -12,8 +13,10 @@
         <a href="{% url 'projects:detail' project.pk %}" class="inline-flex px-4 py-2 border border-black/20 text-sm font-bold hover:border-black/40 transition-colors">Back to Project</a>
     </div>
 
-    <form method="post" class="bg-white border border-black/10 p-6 md:p-8">
-        {% csrf_token %}
+    <div class="grid lg:grid-cols-5 gap-8">
+        <div class="lg:col-span-3">
+            <form method="post" class="bg-white border border-black/10 p-6 md:p-8">
+                {% csrf_token %}
 
         <div class="grid md:grid-cols-2 gap-6">
             <div>
@@ -62,11 +65,63 @@
             <label class="text-sm font-semibold text-ui-text">Include mesh option</label>
         </div>
 
-        <div class="mt-8 pt-6 border-t border-black/10 flex justify-end">
-            <button type="submit" class="inline-flex px-6 py-3 bg-brand-red text-white text-sm font-bold hover:bg-[#b13227] transition-colors">Save Element</button>
+                <div class="mt-8 pt-6 border-t border-black/10 flex justify-end">
+                    <button type="submit" class="inline-flex px-6 py-3 bg-brand-red text-white text-sm font-bold hover:bg-[#b13227] transition-colors">Save Element</button>
+                </div>
+            </form>
         </div>
-    </form>
+        
+        <!-- Live CAD Preview -->
+        <div class="lg:col-span-2">
+            <div class="bg-white border border-black/10 p-6 sticky top-6">
+                <h3 class="text-xs uppercase tracking-[0.14em] font-bold text-ui-muted mb-4">Live CAD Preview</h3>
+                <div id="live-cad-preview" class="w-full h-[500px] bg-[#fdfdfd] border border-black/5 flex items-center justify-center p-4">
+                    <span class="text-xs text-ui-muted font-bold">Enter dimensions to preview</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
+
+<script>
+    var typologyMap = {
+        {% for t in form.fields.typology.queryset %}
+            "{{ t.id }}": "{{ t.category }}",
+        {% endfor %}
+    };
+</script>
+<script src="{% static 'js/cad_renderer.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const widthInput = document.getElementById('id_width');
+        const heightInput = document.getElementById('id_height');
+        const typologyInput = document.getElementById('id_typology');
+        const meshInput = document.getElementById('id_has_mesh');
+        const previewContainer = document.getElementById('live-cad-preview');
+
+        function updatePreview() {
+            const w = parseFloat(widthInput.value) || 0;
+            const h = parseFloat(heightInput.value) || 0;
+            const tId = typologyInput.value;
+            const category = typologyMap[tId] || 'fixed';
+            const hasMesh = meshInput ? meshInput.checked : false;
+            
+            if (w > 0 && h > 0) {
+                renderCadWindow(previewContainer, w, h, category, hasMesh);
+            } else {
+                previewContainer.innerHTML = '<span class="text-xs text-ui-muted font-bold">Enter dimensions to preview</span>';
+            }
+        }
+
+        widthInput.addEventListener('input', updatePreview);
+        heightInput.addEventListener('input', updatePreview);
+        typologyInput.addEventListener('change', updatePreview);
+        if (meshInput) meshInput.addEventListener('change', updatePreview);
+        
+        // Initial render if fields are pre-filled
+        updatePreview();
+    });
+</script>
 
 <style>
     input[type="text"], input[type="email"], input[type="number"], textarea, select {

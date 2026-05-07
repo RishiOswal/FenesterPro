@@ -92,21 +92,9 @@
             <span class="inline-flex mt-3 text-xs font-bold px-2.5 py-1 border border-black/10 bg-[#faf8f4]">Mesh Included</span>
             {% endif %}
 
-            <!-- Photorealistic Window Graphic -->
-            <div class="w-full h-48 mt-5 bg-[#f8f9fa] border border-black/5 flex items-center justify-center p-3 shadow-inner rounded-sm overflow-hidden">
-                <div class="relative h-full w-full flex items-center justify-center">
-                    {% if window.typology.category == 'sliding' %}
-                        <img src="{% static 'images/sliding_window.png' %}" class="object-cover shadow-md border border-black/20 rounded-sm" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;" alt="Sliding Window">
-                    {% elif window.typology.category == 'fixed' %}
-                        <img src="{% static 'images/fixed_window.png' %}" class="object-cover shadow-md border border-black/20 rounded-sm" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;" alt="Fixed Window">
-                    {% elif window.typology.category == 'casement' or window.typology.category == 'awning' %}
-                        <img src="{% static 'images/casement_window.png' %}" class="object-cover shadow-md border border-black/20 rounded-sm" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;" alt="Casement Window">
-                    {% elif window.typology.category == 'door' %}
-                        <img src="{% static 'images/aluminium_door.png' %}" class="object-cover shadow-md border border-black/20 rounded-sm" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;" alt="Door">
-                    {% else %}
-                        <div class="bg-gray-200 border border-gray-300 rounded-sm flex items-center justify-center text-xs text-gray-500 font-bold" style="height: 100%; aspect-ratio: {{ window.width }} / {{ window.height }}; max-width: 100%;">NO IMAGE</div>
-                    {% endif %}
-                </div>
+            <!-- CAD Rendering Graphic -->
+            <div class="w-full h-48 mt-5 bg-[#fdfdfd] border border-black/5 flex items-center justify-center p-3 shadow-inner rounded-sm overflow-hidden">
+                <div class="cad-container relative h-full w-full flex items-center justify-center" data-width="{{ window.width|floatformat:0 }}" data-height="{{ window.height|floatformat:0 }}" data-category="{{ window.typology.category }}" data-has-mesh="{{ window.has_mesh|yesno:'true,false' }}"></div>
             </div>
             
         </div>
@@ -311,4 +299,5 @@
         updatePreview();
     })();
 </script>
+<script src="{% static 'js/cad_renderer.js' %}"></script>
 {% endblock %}
